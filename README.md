@@ -40,10 +40,10 @@ php ./rdioLastConvert -i rdiohistory.json -o convertedhistory.csv
 4. click `Connect to a last.fm account`
 5. login to last.fm
 6. click `Yes, Allow access`
-7. `forward scrobbles?` should already be set to yes
+7. `forward scrobbles?` should already be set to `yes`
 
 ### 4. Import Listening History to libre.fm
-1) using libreimport.py from [lastscrape](https://github.com/encukou/lastscrape-gui):
+1. using libreimport.py from [lastscrape](https://github.com/encukou/lastscrape-gui):
 ```
 libreimport.py <my username> convertedhistory.csv
 ```
