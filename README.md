@@ -13,8 +13,8 @@ Converts Rdio Listening History JSON Blob to last.fm exported format. Allows Rdi
 - Rdio only stores 1 year of history
 - Rdio artist names dont always map to Music Brainz artist names
 - RdioLastConvert *does not do* track MBID and album MBID lookups (too ambiguous to do accurate)
-- there may be limitations on *how many* scrobbles libre.fm can send to last.fm
-- using 1 libre.fm account, this is a one-time process (there is no way to clear all history and retry)
+- last.fm only allows the previous 2 weeks of scrobbles. all previous are ignored.
+- if importing into libre.fm, this is a one-time process (there is no way to clear all history and retry)
 
 ### 1. Get your Listening History from Rdio
 1. Log into Rdio using Chrome
@@ -27,13 +27,16 @@ Converts Rdio Listening History JSON Blob to last.fm exported format. Allows Rdi
 8. change the start and count values (near the end) to `start=0&count=99999`
 9. at the end, add  `>> rdiohistory.json`
 
-### 2. Convert your Listening History to last.fm export format
+### 2. Option 1: libre.fm import
+This will get your listening history into libre.fm, but only the last 2 weeks will be forwarded to last.fm.
+
+#### 2a. Convert your Listening History to last.fm export format
 1. Using RdioLastConvert: 
 ```
 php ./rdioLastConvert -i rdiohistory.json -o convertedhistory.csv
 ```
 
-### 3. Setup libre.fm to forward scrobbles to last.fm
+#### 2b. Setup libre.fm to forward scrobbles to last.fm
 1. Create a libre.fm account
 1. go to your libre.fm profile
 2. click Edit
@@ -43,10 +46,30 @@ php ./rdioLastConvert -i rdiohistory.json -o convertedhistory.csv
 6. click `Yes, Allow access`
 7. `forward scrobbles?` should already be set to `yes`
 
-### 4. Import Listening History to libre.fm
+#### 2c. Import Listening History to libre.fm
 1. using libreimport.py from [lastscrape](https://github.com/encukou/lastscrape-gui):
 ```
 libreimport.py <my username> convertedhistory.csv
 ```
 
-Your Rdio Listening History should now safely exist in last.fm!
+### 3. Option 2: use universal scrobbler to import to last.fm
+this method will get your history into last.fm, with the following detractions:
+- you'll lose your timestamps
+- you'll have to pay for premium universal scrobbler for bulk upload
+- you'll have to do it in batches of ~6000 (estimated at 3min tracks)
+- all your tracks will be overlapping the last 2 weeks
+
+#### 3a. Convert your Listening History to last.fm export format
+1. Using RdioLastConvert: 
+```
+php ./rdioLastConvert -i rdiohistory.json -o convertedhistory.csv -u
+```
+
+#### 3b. Import with universal scrobbler
+1. go to [Universal Scrobbler](http://universalscrobbler.com/)
+2. click Login to last.fm, and allow access to universal scrobbler
+3. pay for premium Universal Scrobbler
+4. cut and past a max of 6000 tracks at a time into the bulk import
+5. click Scrobble, and wait for feedback
+
+Your Rdio Listening History should now exist in last.fm (albeit inaccurately) and/or libre.fm.

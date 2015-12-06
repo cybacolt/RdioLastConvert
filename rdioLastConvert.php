@@ -17,8 +17,9 @@
 namespace Rdio;
 
 $config = array();
+$config['uscrobble'] = false; // default to libreImport.py format
 
-$options = getopt('i:o:h');
+$options = getopt('i:o:uh');
 
 if(empty($options)) {
     $options['h'] = 'h';
@@ -31,6 +32,7 @@ foreach ($options as $option => $optionValue) {
             print "\n";
             print "\t -i\tinput file\n";
             print "\t -o\toutput file\n";
+            print "\t -u\toutput in universalscrobble CSV (defaults to libreImport.py CSV)\n";
             print "\t -h\tdisplay help\n";
             print "\n";
             die();
@@ -41,6 +43,9 @@ foreach ($options as $option => $optionValue) {
         case "o":
             $config['output'] = $optionValue;
             break;
+        case "u":
+            $config['uscrobble'] = true;
+            break;
         default:
             break;
     }
@@ -50,7 +55,7 @@ try {
 
     if (array_key_exists('input', $config) && array_key_exists('output', $config)) {
 
-    $rdioConvert = new RdioLastConverter($config['input']);
+    $rdioConvert = new RdioLastConverter($config);
     $output = $rdioConvert->lastConvert();
 
     file_put_contents('./'.$config['output'], $output);
@@ -76,12 +81,23 @@ class RdioLastConverter
     private $artistLookup = array();
     private $rdioHistory = '';
     private $fauxLastFMHistory = array();
+    private $config = array();
     private $options = array(
                             'http' =>
                             array(
                                 'method' => "GET",
                                 'header' => "User-Agent: Rdio History Lookup/1.0 ( rbkbrowne@gmail.com )\r\n"));
     private $throttled = array();
+
+    public function __construct($config)
+    {
+        $this->rdioHistory = json_decode(file_get_contents('./'.$config['input']));
+        if (file_exists('./lookup.cache')) {
+            // reduce MB lookups as much as possible if restarted
+            $this->artistLookup = json_decode(file_get_contents('./lookup.cache'), true);
+        }
+        $this->config = $config;
+    }
 
     private function getArtistMBID($artist)
     {
@@ -130,15 +146,6 @@ class RdioLastConverter
         return $this->artistLookup[$artist];
     }
 
-    public function __construct($fileName)
-    {
-        $this->rdioHistory = json_decode(file_get_contents('./'.$fileName));
-        if (file_exists('./lookup.cache')) {
-            // reduce MB lookups as much as possible if restarted
-            $this->artistLookup = json_decode(file_get_contents('./lookup.cache'), true);
-        }
-    }
-
     public function lastConvert ()
     {
         $i = 0;
@@ -146,20 +153,13 @@ class RdioLastConverter
             foreach ($sources->tracks->items as $track) {
                 $scrobbleTime = $track->time;
                 $track = $track->track;
-                $buffer = array();
-                // unixtimestamp    trackname   artist     album    trackMBID  (optional)      artistMBID (optional)    albumMBID (optional)
-                $buffer['time'] = strtotime($scrobbleTime);
-                $buffer['name'] = $track->name;
-                $buffer['artist'] = $track->artist;
-                $buffer['album'] = $track->album;
-                $buffer['trackMBID'] = ''; // too ambigious to find easily, so skipping
-                $buffer['artistMBID'] = $this->getArtistMBID($track->artist);
-                $buffer['albumMBID'] = ''; // too ambigious to find easily, so skipping
-                if ($buffer['artistMBID'] === false) {
-                    $buffer['artistMBID'] = $this->lookupArtistMBID($track->artist);
+
+                if ($this->config['uscrobble']) {
+                    $this->fauxLastFMHistory[] = $this->universalScrobbleMap($track);
+                } else {
+                    $this->fauxLastFMHistory[] = $this->libreImportMap($scrobbleTime, $track);
                 }
 
-                $this->fauxLastFMHistory[] = implode("\t", $buffer)."\n";
                 $i++;
                 if ($i % 10 === 0) {
                     print $i." tracks\n";
@@ -169,5 +169,33 @@ class RdioLastConverter
 
         print count($this->fauxLastFMHistory)." complete!\n";
         return $this->fauxLastFMHistory;
+    }
+
+    private function libreImportMap($scrobbleTime, $track) {
+        $buffer = array();
+        // unixtimestamp    trackname   artist     album    trackMBID  (optional)      artistMBID (optional)    albumMBID (optional)
+        $buffer['time'] = strtotime($scrobbleTime);
+        $buffer['name'] = $track->name;
+        $buffer['artist'] = $track->artist;
+        $buffer['album'] = $track->album;
+        $buffer['trackMBID'] = ''; // too ambigious to find easily, so skipping
+        $buffer['artistMBID'] = $this->getArtistMBID($track->artist);
+        $buffer['albumMBID'] = ''; // too ambigious to find easily, so skipping
+        if ($buffer['artistMBID'] === false) {
+            $buffer['artistMBID'] = $this->lookupArtistMBID($track->artist);
+        }
+        return implode("\t", $buffer)."\n";
+    }
+
+    private function universalScrobbleMap($track) {
+        $buffer = array();
+        // "{artist}", "{track}", "{album}", "{album artist}", "{duration}"
+        $buffer['artist'] = $track->artist;
+        $buffer['name'] = $track->name;
+        $buffer['album'] = $track->album;
+        $buffer['album_artist'] = $track->artist;
+        $buffer['duration'] = $track->duration;
+
+        return '"'.implode('","', $buffer).'"'."\n";
     }
 }
