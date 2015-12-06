@@ -13,7 +13,7 @@ Converts Rdio Listening History JSON Blob to last.fm exported format. Allows Rdi
 - Rdio only stores 1 year of history
 - Rdio artist names dont always map to Music Brainz artist names
 - RdioLastConvert *does not do* track MBID and album MBID lookups (too ambiguous to do accurate)
-- last.fm only allows the previous 2 weeks of scrobbles. all previous are ignored.
+- last.fm only allows the [previous 2 weeks](http://www.last.fm/forum/34905/_/2230312) of scrobbles. all previous are ignored.
 - if importing into libre.fm, this is a one-time process (there is no way to clear all history and retry)
 
 ### 1. Get your Listening History from Rdio
